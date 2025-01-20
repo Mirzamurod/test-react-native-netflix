@@ -1,0 +1,128 @@
+import { useState } from 'react'
+import { useRouter } from 'expo-router'
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native'
+import { Text } from '@/components'
+import { Formik } from 'formik'
+import { v4 as uuid } from 'uuid'
+import { createAccountSchema } from '@/lib/validation'
+import { ErrorMsg } from './auth'
+import { createAccount } from '@/lib/firebase'
+import { useGlobalContext } from '@/context'
+
+import 'react-native-get-random-values'
+
+const { width, height } = Dimensions.get('window')
+
+const CreateAccount = () => {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const { user } = useGlobalContext()
+
+  const onSubmit = async (values: { name: string; pin: string }) => {
+    setIsLoading(true)
+    try {
+      const res = await createAccount({ ...values, uid: user?.uid!, _id: uuid() })
+
+      if (!res.status) setError(res.message)
+      else {
+        router.replace('/account')
+        Alert.alert('Account created successfully', 'Scroll down to see it')
+      }
+
+      setIsLoading(false)
+    } catch (error) {
+      console.log(error)
+      const result = error as Error
+      setIsLoading(false)
+      setError(result.message)
+    }
+  }
+
+  return (
+    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+      <View className='flex-1 justify-center items-center'>
+        <KeyboardAvoidingView
+          style={{ height }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View className='wrapper flex-1 justify-center items-center bg-transparent'>
+            <View
+              className='form rounded-xl p-5 justify-center bg-neutral-800'
+              style={{ width: width / 1.2, minHeight: height / 3 }}
+            >
+              <Text className='title text-3xl font-bold text-white'>Create account</Text>
+              <Formik
+                onSubmit={onSubmit}
+                initialValues={{ name: '', pin: '' }}
+                validationSchema={createAccountSchema}
+              >
+                {({ handleChange, handleBlur, handleSubmit, values, errors }) => (
+                  <View className='flex-col'>
+                    {error ? (
+                      <View
+                        className='alert p-3 rounded-xl mt-5'
+                        style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)' }}
+                      >
+                        <Text className='alertText font-bold'>{error}</Text>
+                      </View>
+                    ) : null}
+                    <TextInput
+                      onChangeText={handleChange('name')}
+                      onBlur={handleBlur('name')}
+                      value={values.name}
+                      placeholder='Enter your name'
+                      placeholderTextColor='gray'
+                      className='input w-full h-12 border-0 p-3 rounded-xl bg-gray-800 text-white mt-5'
+                    />
+                    <ErrorMsg>{errors.name}</ErrorMsg>
+                    <TextInput
+                      onChangeText={handleChange('pin')}
+                      onBlur={handleBlur('pin')}
+                      value={values.pin}
+                      placeholder='Enter your pin'
+                      placeholderTextColor='gray'
+                      className='input w-full h-12 border-0 p-3 rounded-xl bg-gray-800 text-white mt-5'
+                      keyboardType='numeric'
+                      maxLength={4}
+                      secureTextEntry
+                    />
+                    <ErrorMsg>{errors.pin}</ErrorMsg>
+                    <TouchableOpacity
+                      onPress={() => handleSubmit()}
+                      className='formButton w-full h-12 bg-[#e7442e] mt-5 rounded-xl justify-center items-center border-0'
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color='white' />
+                      ) : (
+                        <Text className='textButton text-base font-bold'>Create Account</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </Formik>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
+  )
+}
+
+export default CreateAccount
+
+const styles = StyleSheet.create({})
